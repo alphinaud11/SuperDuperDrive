@@ -18,6 +18,11 @@ class CloudStorageApplicationTests {
 
 	private WebDriver driver;
 
+	// variables to keep track of number of notes and credentials created,
+	// used to determine the id of the newly created note or credential in each test
+	private static int notesCreated;
+	private static int credentialsCreated;
+
 	@BeforeAll
 	static void beforeAll() {
 		WebDriverManager.chromedriver().setup();
@@ -35,6 +40,7 @@ class CloudStorageApplicationTests {
 		}
 	}
 
+	// test that verifies that an unauthorized user can only access the login and signup pages.
 	@Test
 	public void unauthorizedUser() {
 		// Visit the sign-up page.
@@ -54,11 +60,13 @@ class CloudStorageApplicationTests {
 		Assertions.assertEquals("Login", driver.getTitle());
 	}
 
+	// test that signs up a new user, logs in, verifies that the home page is accessible, logs out, and
+	// verifies that the home page is no longer accessible.
 	@Test
 	public void loginLogout() {
 		// Create a test account and login
-		doMockSignUp("URL","Test","UT","123");
-		doLogIn("UT", "123");
+		doMockSignUp("URL","Test","user1","123");
+		doLogIn("user1", "123");
 
 		// verify home page is accessible
 		Assertions.assertEquals("Home", driver.getTitle());
@@ -76,10 +84,12 @@ class CloudStorageApplicationTests {
 		Assertions.assertEquals("Login", driver.getTitle());
 	}
 
-	public void createNote(String noteTitle, String noteDescription) {
+	public void createNote(String signupUsername, String noteTitle, String noteDescription) {
+		notesCreated++;
+
 		// Create a test account and login
-		doMockSignUp("URL","Test","UT","123");
-		doLogIn("UT", "123");
+		doMockSignUp("URL","Test",signupUsername,"123");
+		doLogIn(signupUsername, "123");
 		WebDriverWait webDriverWait = new WebDriverWait(driver, 2);
 
 		// click notes tab
@@ -119,29 +129,31 @@ class CloudStorageApplicationTests {
 		buttonNotesTab2.click();
 
 		// wait for new note to load
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(noteTitle+"1")));
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(noteDescription+"1")));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(noteTitle+notesCreated)));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(noteDescription+notesCreated)));
 	}
 
+	// test that creates a note, and verifies it is displayed.
 	@Test
 	public void verifyCreateNote() {
-		// create new note
-		createNote("title", "description");
+		// create new user and note
+		createNote("user2","title", "description");
 
 		// verify note is displayed
-		Assertions.assertEquals(driver.findElement(By.id("title1")).getText(), "title");
-		Assertions.assertEquals(driver.findElement(By.id("description1")).getText(), "description");
+		Assertions.assertEquals(driver.findElement(By.id("title"+notesCreated)).getText(), "title");
+		Assertions.assertEquals(driver.findElement(By.id("description"+notesCreated)).getText(), "description");
 	}
 
+	// test that edits an existing note and verifies that the changes are displayed.
 	@Test
 	public void verifyEditNote() {
-		// create new note
-		createNote("title1", "description1");
+		// create new user and note
+		createNote("user3","title1", "description1");
 
 		// show note modal
 		WebDriverWait webDriverWait = new WebDriverWait(driver, 2);
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("editNote1")));
-		WebElement buttonEditNote = driver.findElement(By.id("editNote1"));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("editNote"+notesCreated)));
+		WebElement buttonEditNote = driver.findElement(By.id("editNote"+notesCreated));
 		buttonEditNote.click();
 
 		// fill out note inputs
@@ -173,23 +185,24 @@ class CloudStorageApplicationTests {
 		buttonNotesTab2.click();
 
 		// wait for newly edited note to load
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("title21")));
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("description21")));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("title2"+notesCreated)));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("description2"+notesCreated)));
 
 		// verify note is displayed
-		Assertions.assertEquals(driver.findElement(By.id("title21")).getText(), "title2");
-		Assertions.assertEquals(driver.findElement(By.id("description21")).getText(), "description2");
+		Assertions.assertEquals(driver.findElement(By.id("title2"+notesCreated)).getText(), "title2");
+		Assertions.assertEquals(driver.findElement(By.id("description2"+notesCreated)).getText(), "description2");
 	}
 
+	// test that deletes a note and verifies that the note is no longer displayed.
 	@Test
 	public void verifyDeleteNote() {
-		// create new note
-		createNote("title", "description");
+		// create new user and note
+		createNote("user4","title", "description");
 		WebDriverWait webDriverWait = new WebDriverWait(driver, 2);
 
 		// delete note
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("deleteNote1")));
-		WebElement buttonDeleteNote = driver.findElement(By.id("deleteNote1"));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("deleteNote"+notesCreated)));
+		WebElement buttonDeleteNote = driver.findElement(By.id("deleteNote"+notesCreated));
 		buttonDeleteNote.click();
 
 		// go from result page back to home page
@@ -204,14 +217,16 @@ class CloudStorageApplicationTests {
 		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("showNoteModal")));
 
 		// verify note is removed
-		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("title1")));
-		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("description1")));
+		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("title"+notesCreated)));
+		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("description"+notesCreated)));
 	}
 
-	public void createCredential(String url, String username, String password) {
+	public void createCredential(String signupUsername, String url, String username, String password) {
+		credentialsCreated++;
+
 		// Create a test account and login
-		doMockSignUp("URL","Test","UT","123");
-		doLogIn("UT", "123");
+		doMockSignUp("URL","Test",signupUsername,"123");
+		doLogIn(signupUsername, "123");
 		WebDriverWait webDriverWait = new WebDriverWait(driver, 2);
 
 		// click credentials tab
@@ -256,31 +271,35 @@ class CloudStorageApplicationTests {
 		buttonCredentialsTab2.click();
 
 		// wait for new credential to load
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(url+"1")));
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(username+"1")));
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(password+"1")));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(url+credentialsCreated)));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(username+credentialsCreated)));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id(password+credentialsCreated)));
 	}
 
+	// test that creates a set of credentials, verifies that they are displayed, and verifies that the
+	// displayed password is encrypted.
 	@Test
 	public void verifyCreateCredential() {
-		// create new credential
-		createCredential("youtube.com", "username", "password");
+		// create new user and credential
+		createCredential("user5","youtube.com", "username", "password");
 
 		// verify credential is displayed
-		Assertions.assertEquals(driver.findElement(By.id("youtube.com1")).getText(), "youtube.com");
-		Assertions.assertEquals(driver.findElement(By.id("username1")).getText(), "username");
-		Assertions.assertNotEquals(driver.findElement(By.id("password1")).getText(), "password");
+		Assertions.assertEquals(driver.findElement(By.id("youtube.com"+credentialsCreated)).getText(), "youtube.com");
+		Assertions.assertEquals(driver.findElement(By.id("username"+credentialsCreated)).getText(), "username");
+		Assertions.assertNotEquals(driver.findElement(By.id("password"+credentialsCreated)).getText(), "password");
 	}
 
+	// test that views an existing set of credentials, verifies that the viewable password is
+	// unencrypted, edits the credentials, and verifies that the changes are displayed.
 	@Test
 	public void verifyEditCredential() {
-		// create new credential
-		createCredential("youtube.com", "username1", "password1");
+		// create new user and credential
+		createCredential("user6","youtube.com", "username1", "password1");
 
 		// show credential modal
 		WebDriverWait webDriverWait = new WebDriverWait(driver, 2);
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("editCredential1")));
-		WebElement buttonEditCredential = driver.findElement(By.id("editCredential1"));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("editCredential"+credentialsCreated)));
+		WebElement buttonEditCredential = driver.findElement(By.id("editCredential"+credentialsCreated));
 		buttonEditCredential.click();
 
 		// verify password is unencrypted
@@ -321,8 +340,8 @@ class CloudStorageApplicationTests {
 		buttonCredentialsTab2.click();
 
 		// show credential modal
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("editCredential1")));
-		WebElement buttonEditCredential2 = driver.findElement(By.id("editCredential1"));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("editCredential"+credentialsCreated)));
+		WebElement buttonEditCredential2 = driver.findElement(By.id("editCredential"+credentialsCreated));
 		buttonEditCredential2.click();
 
 		// wait for input fields to display
@@ -336,15 +355,16 @@ class CloudStorageApplicationTests {
 		Assertions.assertEquals(driver.findElement(By.id("credential-password")).getAttribute("value"), "password2");
 	}
 
+	// test that deletes an existing set of credentials and verifies that the credentials are no longer displayed.
 	@Test
 	public void verifyDeleteCredential() {
-		// create new credential
-		createCredential("youtube.com", "username", "password");
+		// create new user and credential
+		createCredential("user7","youtube.com", "username", "password");
 		WebDriverWait webDriverWait = new WebDriverWait(driver, 2);
 
 		// delete credential
-		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("deleteCredential1")));
-		WebElement buttonDeleteCredential = driver.findElement(By.id("deleteCredential1"));
+		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("deleteCredential"+credentialsCreated)));
+		WebElement buttonDeleteCredential = driver.findElement(By.id("deleteCredential"+credentialsCreated));
 		buttonDeleteCredential.click();
 
 		// go from result page back to home page
@@ -359,9 +379,9 @@ class CloudStorageApplicationTests {
 		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("showCredentialModal")));
 
 		// verify credential is removed
-		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("youtube.com1")));
-		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("username1")));
-		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("password1")));
+		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("youtube.com"+credentialsCreated)));
+		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("username"+credentialsCreated)));
+		Assertions.assertThrows(NoSuchElementException.class, () -> driver.findElement(By.id("password"+credentialsCreated)));
 	}
 
 	@Test
@@ -381,7 +401,7 @@ class CloudStorageApplicationTests {
 		WebDriverWait webDriverWait = new WebDriverWait(driver, 2);
 		driver.get("http://localhost:" + this.port + "/signup");
 		webDriverWait.until(ExpectedConditions.titleContains("Sign Up"));
-		
+
 		// Fill out credentials
 		webDriverWait.until(ExpectedConditions.visibilityOfElementLocated(By.id("inputFirstName")));
 		WebElement inputFirstName = driver.findElement(By.id("inputFirstName"));
@@ -408,15 +428,15 @@ class CloudStorageApplicationTests {
 		WebElement buttonSignUp = driver.findElement(By.id("buttonSignUp"));
 		buttonSignUp.click();
 
-		/* Check that the sign up was successful. 
-		// You may have to modify the element "success-msg" and the sign-up 
+		/* Check that the sign up was successful.
+		// You may have to modify the element "success-msg" and the sign-up
 		// success message below depening on the rest of your code.
 		*/
 		Assertions.assertTrue(driver.findElement(By.id("success-msg")).getText().contains("You successfully signed up!"));
 	}
 
-	
-	
+
+
 	/**
 	 * PLEASE DO NOT DELETE THIS method.
 	 * Helper method for Udacity-supplied sanity checks.
@@ -446,35 +466,35 @@ class CloudStorageApplicationTests {
 	}
 
 	/**
-	 * PLEASE DO NOT DELETE THIS TEST. You may modify this test to work with the 
-	 * rest of your code. 
-	 * This test is provided by Udacity to perform some basic sanity testing of 
-	 * your code to ensure that it meets certain rubric criteria. 
-	 * 
-	 * If this test is failing, please ensure that you are handling redirecting users 
+	 * PLEASE DO NOT DELETE THIS TEST. You may modify this test to work with the
+	 * rest of your code.
+	 * This test is provided by Udacity to perform some basic sanity testing of
+	 * your code to ensure that it meets certain rubric criteria.
+	 *
+	 * If this test is failing, please ensure that you are handling redirecting users
 	 * back to the login page after a succesful sign up.
-	 * Read more about the requirement in the rubric: 
-	 * https://review.udacity.com/#!/rubrics/2724/view 
+	 * Read more about the requirement in the rubric:
+	 * https://review.udacity.com/#!/rubrics/2724/view
 	 */
 	@Test
 	public void testRedirection() {
 		// Create a test account
 		doMockSignUp("Redirection","Test","RT","123");
-		
+
 		// Check if we have been redirected to the log in page.
 		Assertions.assertEquals("http://localhost:" + this.port + "/login", driver.getCurrentUrl());
 	}
 
 	/**
-	 * PLEASE DO NOT DELETE THIS TEST. You may modify this test to work with the 
-	 * rest of your code. 
-	 * This test is provided by Udacity to perform some basic sanity testing of 
-	 * your code to ensure that it meets certain rubric criteria. 
-	 * 
-	 * If this test is failing, please ensure that you are handling bad URLs 
+	 * PLEASE DO NOT DELETE THIS TEST. You may modify this test to work with the
+	 * rest of your code.
+	 * This test is provided by Udacity to perform some basic sanity testing of
+	 * your code to ensure that it meets certain rubric criteria.
+	 *
+	 * If this test is failing, please ensure that you are handling bad URLs
 	 * gracefully, for example with a custom error page.
-	 * 
-	 * Read more about custom error pages at: 
+	 *
+	 * Read more about custom error pages at:
 	 * https://attacomsian.com/blog/spring-boot-custom-error-page#displaying-custom-error-page
 	 */
 	@Test
@@ -482,7 +502,7 @@ class CloudStorageApplicationTests {
 		// Create a test account
 		doMockSignUp("URL","Test","UT","123");
 		doLogIn("UT", "123");
-		
+
 		// Try to access a random made-up URL.
 		driver.get("http://localhost:" + this.port + "/some-random-page");
 		Assertions.assertFalse(driver.getPageSource().contains("Whitelabel Error Page"));
@@ -490,15 +510,15 @@ class CloudStorageApplicationTests {
 
 
 	/**
-	 * PLEASE DO NOT DELETE THIS TEST. You may modify this test to work with the 
-	 * rest of your code. 
-	 * This test is provided by Udacity to perform some basic sanity testing of 
-	 * your code to ensure that it meets certain rubric criteria. 
-	 * 
+	 * PLEASE DO NOT DELETE THIS TEST. You may modify this test to work with the
+	 * rest of your code.
+	 * This test is provided by Udacity to perform some basic sanity testing of
+	 * your code to ensure that it meets certain rubric criteria.
+	 *
 	 * If this test is failing, please ensure that you are handling uploading large files (>1MB),
-	 * gracefully in your code. 
-	 * 
-	 * Read more about file size limits here: 
+	 * gracefully in your code.
+	 *
+	 * Read more about file size limits here:
 	 * https://spring.io/guides/gs/uploading-files/ under the "Tuning File Upload Limits" section.
 	 */
 	@Test
@@ -525,7 +545,4 @@ class CloudStorageApplicationTests {
 		Assertions.assertFalse(driver.getPageSource().contains("HTTP Status 403 – Forbidden"));
 
 	}
-
-
-
 }
